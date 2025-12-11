@@ -1,0 +1,7 @@
+# Data extraction
+duckdb
+python-dotenv
+
+# dbt transformation
+dbt-core
+dbt-duckdb
