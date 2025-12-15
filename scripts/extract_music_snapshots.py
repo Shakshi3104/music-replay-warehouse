@@ -2,6 +2,9 @@
 """
 extract_music_snapshots.py
 TimeMachineからMusicライブラリのスナップショットを抽出
+
+対応するTimeMachine構造（APFS形式）:
+/Volumes/.timemachine/[UUID]/YYYY-MM-DD-HHMMSS.backup/YYYY-MM-DD-HHMMSS.backup/Data/Users/...
 """
 
 import os
@@ -16,8 +19,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- 環境変数から設定を読み込む ---
+# TIMEMACHINE_VOLUME: /Volumes/.timemachine/[UUID] の形式
 TIMEMACHINE_VOLUME = os.getenv("TIMEMACHINE_VOLUME")
-MAC_NAME = os.getenv("MAC_NAME")
 USERNAME = os.getenv("USERNAME")
 OUTPUT_DB = "music_replay.duckdb"
 # ----------------------------------------------------
@@ -25,10 +28,10 @@ OUTPUT_DB = "music_replay.duckdb"
 # --- 設定のバリデーション ---
 if not TIMEMACHINE_VOLUME:
     print("エラー: 環境変数 TIMEMACHINE_VOLUME が設定されていません。")
-    print(".envファイルに 'TIMEMACHINE_VOLUME=\"/Volumes/YourTimeMachineDisk\"' のように記述してください。")
+    print(".envファイルに 'TIMEMACHINE_VOLUME=\"/Volumes/.timemachine/[UUID]\"' のように記述してください。")
     sys.exit(1)
-if not MAC_NAME or not USERNAME:
-    print("エラー: 環境変数 MAC_NAME または USERNAME が見つかりません。")
+if not USERNAME:
+    print("エラー: 環境変数 USERNAME が見つかりません。")
     print(".envファイルが正しく設定されているか確認してください。")
     sys.exit(1)
 # ---------------------------
@@ -40,38 +43,46 @@ LIBRARY_PATHS = [
     f"Users/{USERNAME}/Music/iTunes/iTunes Library.xml",
 ]
 
-def find_backups(timemachine_path: str, mac_name: str) -> list[tuple[datetime, str]]:
-    """TimeMachineのバックアップ一覧を取得"""
-    backup_base = Path(timemachine_path) / "Backups.backupdb" / mac_name
+def find_backups(timemachine_path: str) -> list[tuple[datetime, str]]:
+    """TimeMachineのバックアップ一覧を取得（APFS形式対応）
+
+    APFS形式のTimeMachine構造:
+    /Volumes/.timemachine/[UUID]/YYYY-MM-DD-HHMMSS.backup/YYYY-MM-DD-HHMMSS.backup/
+    """
+    backup_base = Path(timemachine_path)
     if not backup_base.exists():
         print(f"エラー: バックアップディレクトリが見つかりません: {backup_base}")
-        print(".envファイルの TIMEMACHINE_VOLUME と MAC_NAME の設定を確認してください。")
+        print(".envファイルの TIMEMACHINE_VOLUME の設定を確認してください。")
         return []
-    
+
     backups = []
     for backup_dir in backup_base.iterdir():
-        if backup_dir.name == "Latest":
+        # .backup で終わるディレクトリを探す
+        if not backup_dir.name.endswith(".backup"):
             continue
+
         try:
-            # フォルダ名からハイフンを取り除いてパース
-            date_str = backup_dir.name.replace("-", "")
-            # タイムゾーンを考慮しないnaiveなdatetimeとしてパース
-            backup_date = datetime.strptime(date_str, "%Y%m%d%H%M%S")
-            backups.append((backup_date, str(backup_dir)))
-        except ValueError:
-            # "YYYY-MM-DD-HHMMSS.local" のような形式に対応
-            try:
-                date_str = backup_dir.name.split('.')[0]
-                backup_date = datetime.strptime(date_str, "%Y-%m-%d-%H%M%S")
+            # "YYYY-MM-DD-HHMMSS.backup" から日付をパース
+            date_str = backup_dir.name.replace(".backup", "")
+            backup_date = datetime.strptime(date_str, "%Y-%m-%d-%H%M%S")
+
+            # ネストしたディレクトリのパスを構築
+            # 例: 2025-01-03-095001.backup/2025-01-03-095001.backup/
+            nested_path = backup_dir / backup_dir.name
+            if nested_path.exists():
+                backups.append((backup_date, str(nested_path)))
+            else:
+                # ネストしていない場合はそのまま使用
                 backups.append((backup_date, str(backup_dir)))
-            except ValueError:
-                continue
+        except ValueError:
+            continue
 
     return sorted(backups)
 
 def find_library_file(backup_path: str, library_paths: list[str]) -> str | None:
     """バックアップ内のライブラリファイルを探す"""
-    for volume in ["Macintosh HD", "Macintosh HD - Data", "Data"]:
+    # APFS形式では "Data" が主、従来形式も念のためサポート
+    for volume in ["Data", "Macintosh HD - Data", "Macintosh HD"]:
         for lib_path in library_paths:
             full_path = Path(backup_path) / volume / lib_path
             if full_path.exists():
@@ -198,11 +209,11 @@ def load_to_duckdb(db_path: str, snapshot_date: datetime,
 def main():
     # DuckDBファイルをプロジェクトルートに作成
     db_file = Path(__file__).parent.parent / OUTPUT_DB
-    
-    backups = find_backups(TIMEMACHINE_VOLUME, MAC_NAME)
+
+    backups = find_backups(TIMEMACHINE_VOLUME)
     if not backups:
         return
-        
+
     print(f"Found {len(backups)} backups")
 
     for backup_date, backup_path in backups:
