@@ -1,0 +1,6 @@
+music_replay_warehouse:
+  outputs:
+    dev:
+      type: duckdb
+      path: 'music_replay.duckdb'
+  target: dev

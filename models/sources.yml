@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: itunes
+    schema: main
+    tables:
+      - name: raw_itunes_library
+        description: TimeMachine/XMLからロードされた生のiTunesライブラリデータ
+        columns:
+          - name: snapshot_date
+            description: スナップショットの日付
+          - name: track_id
+            description: トラックID
+          - name: persistent_id
+            description: トラックの固有ID（iTunes/Music.app）
+          - name: name
+            description: 曲名
+          - name: artist
+            description: アーティスト名
+          - name: album
+            description: アルバム名
+          - name: play_count
+            description: 再生回数（累積）
+          - name: play_date_utc
+            description: 最終再生日時（UTC）
