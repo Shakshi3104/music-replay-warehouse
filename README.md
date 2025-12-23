@@ -21,13 +21,11 @@ Apple Music Replayは便利だが、過去のデータが保持されない。�
 | 項目 | 選定 |
 |------|------|
 | データベース | DuckDB |
-| データソース | Music Library XML / CSV（music-library-exporter-swift） |
+| データソース | Music Library XML |
 | 変換ツール | dbt-duckdb |
 | アーキテクチャ | メダリオンアーキテクチャ |
 
 ## アーキテクチャ
-
-[メダリオンアーキテクチャ](https://www.databricks.com/glossary/medallion-architecture)を採用し、4層構成でデータを段階的に精製。
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -103,13 +101,6 @@ music-replay-warehouse/
 │   ├── silver/              # クリーニング済み
 │   ├── gold/                # ディメンション・ファクト
 │   └── platinum/            # Replay風レポート
-├── scripts/
-│   ├── extract_music_snapshots.py  # TimeMachineから抽出
-│   ├── load_xml_snapshot.py        # XMLをDuckDBにロード
-│   └── load_csv_snapshot.py        # CSVをDuckDBにロード
-├── tools/
-│   ├── test_itlibrary.swift        # iTunes Library Framework検証
-│   └── test_timemachine_library.sh # TimeMachineライブラリ検証
 ├── dbt_project.yml
 ├── profiles.yml
 ├── requirements.txt
@@ -119,17 +110,3 @@ music-replay-warehouse/
 ## 関連リポジトリ
 
 - [music-library-exporter-swift](https://github.com/Shakshi3104/music-library-exporter-swift) - Music.appライブラリをCSV/JSONにエクスポートするSwiftツール
-
-## ドキュメント
-
-- [設計書](docs/design.md)
-
-## 参考
-
-- [spotify-dlt-duck-db](https://github.com/Shakshi3104/spotify-dlt-duck-db)
-- [dbt×DuckDBでSpotify再生履歴を分析するローカルDWHを作る](https://zenn.dev/shakshi3104/articles/b997855b066d62)
-- [dbt×DuckDBでシアトル図書館の貸出履歴を分析する](https://zenn.dev/shakshi3104/articles/88f1773d46d854)
-
-## ライセンス
-
-MIT
