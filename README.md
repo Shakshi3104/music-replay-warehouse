@@ -16,7 +16,7 @@ Apple Musicサブスクリプションなしで、以下のような年間統計
 | 項目 | 選定 |
 |------|------|
 | データベース | DuckDB |
-| データソース | TimeMachine内のMusic Library.xml |
+| データソース | Music Library.xml |
 | 変換ツール | Python + dbt-duckdb |
 
 ## アーキテクチャ
@@ -59,17 +59,3 @@ music-replay-warehouse/
 ├── dbt_project.yml
 └── README.md
 ```
-
-## ドキュメント
-
-- [設計書](docs/design.md)
-
-## 参考
-
-- [spotify-dlt-duck-db](https://github.com/Shakshi3104/spotify-dlt-duck-db)
-- [dbt×DuckDBでSpotify再生履歴を分析するローカルDWHを作る](https://zenn.dev/shakshi3104/articles/b997855b066d62)
-- [dbt×DuckDBでシアトル図書館の貸出履歴を分析する](https://zenn.dev/shakshi3104/articles/88f1773d46d854)
-
-## ライセンス
-
-MIT
