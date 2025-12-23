@@ -1,0 +1,27 @@
+name: 'music_replay_warehouse'
+version: '1.0.0'
+config-version: 2
+
+profile: 'music_replay_warehouse'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  music_replay_warehouse:
+    bronze:
+      +materialized: table
+    silver:
+      +materialized: table
+    gold:
+      +materialized: view
+    platinum:
+      +materialized: view
