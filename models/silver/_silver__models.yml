@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: silver_tracks
+    description: |
+      トラックのスナップショットを、分析しやすい列名・型に整えたテーブル。1スナップショット × 1トラックで1行。
+      persistent_id が無い行は除く。再生回数・スキップ回数の NULL は 0 にしている。
+    columns:
+      - name: track_persistent_id
+        description: トラックの固有ID。スナップショットをまたいでトラックを識別するキー
+      - name: snapshot_date
+        description: スナップショットの日付
+      - name: itunes_track_id
+        description: ライブラリ内のトラックID。ライブラリを作り直すと変わるので、識別には track_persistent_id を使う
+      - name: title
+        description: 曲名
+      - name: artist_name
+        description: アーティスト名
+      - name: album_artist_name
+        description: アルバムアーティスト名。コンピレーションなどで artist_name と異なることがある
+      - name: album_name
+        description: アルバム名
+      - name: genre
+        description: ジャンル
+      - name: release_year
+        description: リリース年
+      - name: file_type
+        description: ファイルの種類（例：Apple Music AAC オーディオファイル）
+      - name: duration_ms
+        description: 曲の長さ（ミリ秒）
+      - name: duration_min
+        description: 曲の長さ（分、小数2桁）
+      - name: disc_number
+        description: ディスク番号
+      - name: disc_count
+        description: アルバムのディスク枚数
+      - name: track_number
+        description: ディスク内のトラック番号
+      - name: track_count
+        description: ディスク内のトラック数
+      - name: play_count
+        description: 再生回数（スナップショット時点の累積）。期間内の再生回数は fact_play_count_snapshot の play_count_delta を使う
+      - name: last_played_at
+        description: ライブラリXMLの Play Date の値（数値のまま）。日時として使うときは last_played_at_utc を使う
+      - name: last_played_at_utc
+        description: 最終再生日時（UTC）
+      - name: skip_count
+        description: スキップ回数（スナップショット時点の累積）
+      - name: last_skipped_at
+        description: 最終スキップ日時
+      - name: rating_raw
+        description: 評価（0〜100。星1つが20）
+      - name: rating_stars
+        description: 評価を星の数（0〜5）にしたもの。未評価は NULL
+      - name: is_loved
+        description: 「ラブ」を付けているか
+      - name: added_at
+        description: ライブラリに追加した日時
+      - name: file_path
+        description: 音楽ファイルの場所（file:// のURL）
+      - name: snapshot_path
+        description: 読み込んだライブラリファイル（XML / CSV）のパス

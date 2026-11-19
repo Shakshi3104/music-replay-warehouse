@@ -1,0 +1,101 @@
+version: 2
+
+models:
+  - name: dim_track
+    description: |
+      トラックのディメンション。1トラック1行。
+      曲名やアルバムなどの属性は、最新のスナップショットの値を使う。
+    columns:
+      - name: track_persistent_id
+        description: トラックの固有ID（主キー）
+      - name: itunes_track_id
+        description: ライブラリ内のトラックID。ライブラリを作り直すと変わるので、識別には track_persistent_id を使う
+      - name: title
+        description: 曲名
+      - name: artist_name
+        description: アーティスト名
+      - name: album_artist_name
+        description: アルバムアーティスト名
+      - name: album_name
+        description: アルバム名
+      - name: genre
+        description: ジャンル
+      - name: release_year
+        description: リリース年
+      - name: file_type
+        description: ファイルの種類
+      - name: duration_ms
+        description: 曲の長さ（ミリ秒）
+      - name: duration_min
+        description: 曲の長さ（分、小数2桁）
+      - name: disc_number
+        description: ディスク番号
+      - name: disc_count
+        description: アルバムのディスク枚数
+      - name: track_number
+        description: ディスク内のトラック番号
+      - name: track_count
+        description: ディスク内のトラック数
+      - name: rating_raw
+        description: 評価（0〜100。星1つが20）
+      - name: rating_stars
+        description: 評価を星の数（0〜5）にしたもの。未評価は NULL
+      - name: is_loved
+        description: 「ラブ」を付けているか
+      - name: added_at
+        description: ライブラリに追加した日時
+
+  - name: dim_artist
+    description: |
+      アーティストのディメンション。1アーティスト1行。
+      ライブラリにある曲の数・アルバムの数・合計の長さで、再生回数は含まない。再生回数は platinum_top_artists を使う。
+    columns:
+      - name: artist_name
+        description: アーティスト名（主キー）。アルバムアーティストではなく、曲ごとのアーティスト名
+      - name: track_count
+        description: ライブラリにあるこのアーティストの曲数
+      - name: album_count
+        description: ライブラリにあるこのアーティストのアルバム数
+      - name: total_duration_min
+        description: ライブラリにあるこのアーティストの曲の長さの合計（分）
+
+  - name: dim_album
+    description: |
+      アルバムのディメンション。アルバム名 × アルバムアーティストで1行。
+      ライブラリにある曲の数・合計の長さで、再生回数は含まない。再生回数は platinum_top_albums を使う。
+    columns:
+      - name: album_name
+        description: アルバム名
+      - name: album_artist_name
+        description: アルバムアーティスト名。同名の別アルバムを区別するために album_name と組で使う
+      - name: release_year
+        description: リリース年（収録曲の中で最も古い年）
+      - name: track_count
+        description: ライブラリにあるこのアルバムの曲数
+      - name: total_duration_min
+        description: ライブラリにあるこのアルバムの曲の長さの合計（分）
+
+  - name: fact_play_count_snapshot
+    description: |
+      トラックごとの再生回数のスナップショット。1スナップショット × 1トラックで1行。
+      前回のスナップショットからの増分（play_count_delta）を持つので、スナップショットの間に何回再生したかが分かる。
+      各トラックで最初のスナップショットは比べる相手が無いため、増分が NULL になる。
+    columns:
+      - name: track_persistent_id
+        description: トラックの固有ID。dim_track と結合するキー
+      - name: snapshot_date
+        description: スナップショットの日付
+      - name: play_count
+        description: 再生回数（スナップショット時点の累積）
+      - name: skip_count
+        description: スキップ回数（スナップショット時点の累積）
+      - name: last_played_at_utc
+        description: 最終再生日時（UTC）
+      - name: duration_min
+        description: 曲の長さ（分）。再生時間は play_count_delta × duration_min で出す
+      - name: play_count_delta
+        description: 前回のスナップショットからの再生回数の増分。最初のスナップショットでは NULL。ライブラリの作り直しなどで累積が減るとマイナスになる
+      - name: skip_count_delta
+        description: 前回のスナップショットからのスキップ回数の増分。最初のスナップショットでは NULL
+      - name: prev_snapshot_date
+        description: 比べた前回のスナップショットの日付。最初のスナップショットでは NULL
