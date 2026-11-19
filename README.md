@@ -74,6 +74,27 @@ SELECT * FROM platinum_top_artists LIMIT 20;
 SELECT * FROM platinum_top_albums LIMIT 20;
 ```
 
+## データカタログ（OKF）
+
+dbt の yml に書いた description と、実際のテーブルの型から、[OKF（Open Knowledge Format）](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) v0.2 のデータカタログを生成できる。1モデルが1つの Markdown ファイルになる。
+
+```bash
+dbt docs generate --profiles-dir .
+python3 scripts/generate_okf.py --manifest target/manifest.json --catalog target/catalog.json --out target/okf
+```
+
+GitHub Actions（`.github/workflows/okf_catalog.yml`）でも、`models/` などが変わるたびに同梱のスナップショットで生成し、成果物 `okf-catalog` として出力している。
+
+モデルをカタログから外したいときは、yml で `meta.okf: false` を付ける。
+
+```yaml
+models:
+  - name: some_model
+    config:
+      meta:
+        okf: false
+```
+
 ## ディレクトリ構成
 
 ```
@@ -83,6 +104,8 @@ music-replay-warehouse/
 │       └── YYYY-MM-DD/
 ├── docs/
 │   └── design.md            # 設計書
+├── scripts/
+│   └── generate_okf.py      # OKF カタログの生成
 ├── models/
 │   ├── bronze/              # 生データ
 │   ├── silver/              # クリーニング済み
