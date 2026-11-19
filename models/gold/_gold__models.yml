@@ -4,7 +4,8 @@ models:
   - name: dim_track
     description: |
       トラックのディメンション。1トラック1行。
-      曲名やアルバムなどの属性は、最新のスナップショットの値を使う。
+      これまでのスナップショットに一度でも現れた曲がすべて入る。最新のスナップショットでライブラリから消えている曲も残る。
+      曲名やアルバムなどの属性は、その曲が最後に現れたスナップショットの値を使う（全体の最新スナップショットの値ではない）。
     columns:
       - name: track_persistent_id
         description: トラックの固有ID（主キー）
@@ -48,21 +49,23 @@ models:
   - name: dim_artist
     description: |
       アーティストのディメンション。1アーティスト1行。
-      ライブラリにある曲の数・アルバムの数・合計の長さで、再生回数は含まない。再生回数は platinum_top_artists を使う。
+      dim_track をアーティストで集計したもの。再生回数は含まない（再生回数は platinum_top_artists を使う）。
+      dim_track と同じく、ライブラリから消えた曲も数に入る。今のライブラリの曲数ではない。
     columns:
       - name: artist_name
         description: アーティスト名（主キー）。アルバムアーティストではなく、曲ごとのアーティスト名
       - name: track_count
-        description: ライブラリにあるこのアーティストの曲数
+        description: このアーティストの曲数（ライブラリから消えた曲を含む）
       - name: album_count
-        description: ライブラリにあるこのアーティストのアルバム数
+        description: このアーティストのアルバム数（ライブラリから消えた曲のアルバムを含む）
       - name: total_duration_min
-        description: ライブラリにあるこのアーティストの曲の長さの合計（分）
+        description: このアーティストの曲の長さの合計（分、ライブラリから消えた曲を含む）
 
   - name: dim_album
     description: |
       アルバムのディメンション。アルバム名 × アルバムアーティストで1行。
-      ライブラリにある曲の数・合計の長さで、再生回数は含まない。再生回数は platinum_top_albums を使う。
+      dim_track をアルバムで集計したもの。再生回数は含まない（再生回数は platinum_top_albums を使う）。
+      dim_track と同じく、ライブラリから消えた曲も数に入る。今のライブラリの曲数ではない。
     columns:
       - name: album_name
         description: アルバム名
@@ -71,9 +74,9 @@ models:
       - name: release_year
         description: リリース年（収録曲の中で最も古い年）
       - name: track_count
-        description: ライブラリにあるこのアルバムの曲数
+        description: このアルバムの曲数（ライブラリから消えた曲を含む）
       - name: total_duration_min
-        description: ライブラリにあるこのアルバムの曲の長さの合計（分）
+        description: このアルバムの曲の長さの合計（分、ライブラリから消えた曲を含む）
 
   - name: fact_play_count_snapshot
     description: |
