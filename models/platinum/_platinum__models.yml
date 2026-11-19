@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: platinum_summary
+    description: |
+      Replay のサマリー（総再生時間・総再生回数など）。1行だけのテーブル。
+      スナップショット間の再生回数の増分のうち、プラスのものだけを、取り込んだ全期間で足している。
+      マイナスの増分（ライブラリの作り直しなどで累積が減ったもの）は 0 として扱い、差し引かない。最初のスナップショットより前の再生は含まない。
+    columns:
+      - name: total_listening_minutes
+        description: 総再生時間（分）。プラスの増分 × 曲の長さの合計
+      - name: total_listening_hours
+        description: 総再生時間（時間、小数1桁）
+      - name: total_plays
+        description: 総再生回数。スナップショット間の増分のうちプラスのものだけの合計（例：+10 と -3 なら 10）
+      - name: unique_tracks_played
+        description: 1回以上再生した曲の数
+      - name: unique_artists_played
+        description: 1回以上再生したアーティストの数
+      - name: unique_albums_played
+        description: 1回以上再生したアルバムの数（アルバム名で数える）
+
+  - name: platinum_top_songs
+    description: |
+      よく再生した曲のランキング。1曲1行で、rank の昇順に並ぶ。
+      スナップショット間の増分のうちプラスのものだけを、取り込んだ全期間で足して順位を付ける。合計が1回以上の曲だけを載せる。
+    columns:
+      - name: title
+        description: 曲名
+      - name: artist_name
+        description: アーティスト名
+      - name: album_name
+        description: アルバム名
+      - name: duration_min
+        description: 曲の長さ（分）
+      - name: play_count
+        description: 期間内の再生回数。スナップショットの累積ではなく、プラスの増分だけの合計（例：+10 と -3 なら 10）
+      - name: listening_minutes
+        description: 期間内の再生時間（分、整数に丸め）。プラスの増分 × 曲の長さの合計
+      - name: rank
+        description: 再生回数の順位。同じ回数は同順位（RANK）
+
+  - name: platinum_top_artists
+    description: |
+      よく再生したアーティストのランキング。1アーティスト1行で、rank の昇順に並ぶ。
+      スナップショット間の増分のうちプラスのものだけを、取り込んだ全期間で足して順位を付ける。
+      アーティストは曲ごとのアーティスト名で数える（アルバムアーティストではない）。
+    columns:
+      - name: artist_name
+        description: アーティスト名
+      - name: play_count
+        description: 期間内の再生回数。プラスの増分だけの合計（例：+10 と -3 なら 10）
+      - name: listening_minutes
+        description: 期間内の再生時間（分、整数に丸め）。プラスの増分 × 曲の長さの合計
+      - name: unique_tracks
+        description: 増分を計算できた曲の数。期間内に再生していない曲（増分0）も含む
+      - name: rank
+        description: 再生回数の順位。同じ回数は同順位（RANK）
+
+  - name: platinum_top_albums
+    description: |
+      よく再生したアルバムのランキング。アルバム名 × アーティストで1行で、rank の昇順に並ぶ。
+      スナップショット間の増分のうちプラスのものだけを、取り込んだ全期間で足して順位を付ける。
+      アーティストはアルバムアーティストを優先し、無ければ曲のアーティストを使う。
+    columns:
+      - name: album_name
+        description: アルバム名
+      - name: artist_name
+        description: アルバムアーティスト名（無ければ曲のアーティスト名）
+      - name: play_count
+        description: 期間内の再生回数。プラスの増分だけの合計（例：+10 と -3 なら 10）
+      - name: listening_minutes
+        description: 期間内の再生時間（分、整数に丸め）。プラスの増分 × 曲の長さの合計
+      - name: unique_tracks
+        description: 増分を計算できた曲の数。期間内に再生していない曲（増分0）も含む
+      - name: rank
+        description: 再生回数の順位。同じ回数は同順位（RANK）

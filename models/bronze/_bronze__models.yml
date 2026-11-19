@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: bronze_itunes_library
+    description: |
+      ソース raw_itunes_library をそのまま写したテーブル。1スナップショット × 1トラックで1行。
+      列名・型・値には手を加えていない。分析には silver_tracks 以降を使う。
+    columns:
+      - name: snapshot_date
+        description: スナップショットの日付
+      - name: snapshot_path
+        description: 読み込んだライブラリファイル（XML / CSV）のパス
+      - name: track_id
+        description: ライブラリ内のトラックID。ライブラリを作り直すと変わるので、トラックの識別には persistent_id を使う
+      - name: name
+        description: 曲名
+      - name: artist
+        description: アーティスト名
+      - name: album_artist
+        description: アルバムアーティスト名
+      - name: album
+        description: アルバム名
+      - name: genre
+        description: ジャンル
+      - name: kind
+        description: ファイルの種類（例：Apple Music AAC オーディオファイル）
+      - name: total_time
+        description: 曲の長さ（ミリ秒）
+      - name: disc_number
+        description: ディスク番号
+      - name: disc_count
+        description: アルバムのディスク枚数
+      - name: track_number
+        description: ディスク内のトラック番号
+      - name: track_count
+        description: ディスク内のトラック数
+      - name: year
+        description: リリース年
+      - name: date_added
+        description: ライブラリに追加した日時
+      - name: play_count
+        description: 再生回数（スナップショット時点の累積）
+      - name: play_date
+        description: ライブラリXMLの Play Date の値（数値のまま）。日時として使うときは play_date_utc を使う
+      - name: play_date_utc
+        description: 最終再生日時（UTC）
+      - name: skip_count
+        description: スキップ回数（スナップショット時点の累積）
+      - name: skip_date
+        description: 最終スキップ日時
+      - name: rating
+        description: 評価（0〜100。星1つが20）
+      - name: loved
+        description: 「ラブ」を付けているか
+      - name: persistent_id
+        description: トラックの固有ID（iTunes/Music.app）。スナップショットをまたいでトラックを識別するキー
+      - name: location
+        description: 音楽ファイルの場所（file:// のURL）
