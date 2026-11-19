@@ -202,14 +202,41 @@ def main() -> None:
 
 
 def replace_dir(src: str, dst: str) -> None:
-    """dst を src で置き換える。前回のバンドル以外のディレクトリは、誤って消さないよう拒否する。"""
+    """dst を src で置き換える。
+
+    消してよいのは、前回の生成で作ったファイル（前回の catalog-index.json に載っているもの）だけ。
+    それ以外のファイル（手で足した log.md など）があれば、消さずに中断する。
+    """
     if os.path.exists(dst):
-        is_empty = os.path.isdir(dst) and not os.listdir(dst)
-        is_bundle = os.path.isfile(os.path.join(dst, "catalog-index.json"))
-        if not (is_empty or is_bundle):
-            raise SystemExit(f"出力先 {dst} は空でも前回のカタログでもないため、上書きしません")
+        unmanaged = sorted(set(list_files(dst)) - previous_outputs(dst))
+        if unmanaged:
+            listed = "\n".join(f"  - {p}" for p in unmanaged[:10])
+            raise SystemExit(
+                f"出力先 {dst} に、このスクリプトが生成していないファイルがあるため上書きしません:\n{listed}\n"
+                "残したいファイルは出力先の外に置いてください。"
+            )
         shutil.rmtree(dst)
     os.replace(src, dst)
+
+
+def list_files(root: str) -> list[str]:
+    return [
+        os.path.relpath(os.path.join(d, f), root).replace(os.sep, "/")
+        for d, _, files in os.walk(root)
+        for f in files
+    ]
+
+
+def previous_outputs(root: str) -> set[str]:
+    """前回の生成で作ったファイルの一覧。前回のカタログでなければ空。"""
+    try:
+        with open(os.path.join(root, "catalog-index.json")) as f:
+            previous = json.load(f)
+    except (OSError, ValueError):
+        return set()
+    if not str(previous.get("generated_by", "")).startswith("dbt-manifest-to-okf/"):
+        return set()
+    return {"index.md", "catalog-index.json"} | {t["path"] for t in previous.get("tables", [])}
 
 
 def write_bundle(targets: dict, catalog_nodes: dict, scheme: str, title: str, dbt_version: str | None, out: str) -> list[dict]:
