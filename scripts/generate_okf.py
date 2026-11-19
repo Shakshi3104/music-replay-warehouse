@@ -215,8 +215,18 @@ def replace_dir(src: str, dst: str) -> None:
                 f"出力先 {dst} に、このスクリプトが生成していないファイルがあるため上書きしません:\n{listed}\n"
                 "残したいファイルは出力先の外に置いてください。"
             )
-        shutil.rmtree(dst)
-    os.replace(src, dst)
+        # 前回のカタログは、新しいカタログを置けたことを確かめてから消す。置けなければ元に戻す
+        backup = tempfile.mkdtemp(prefix=".okf-old-", dir=os.path.dirname(dst))
+        os.rmdir(backup)  # 一意な名前だけ確保し、os.replace で前回のカタログをここに移す
+        os.replace(dst, backup)
+        try:
+            os.replace(src, dst)
+        except BaseException:
+            os.replace(backup, dst)
+            raise
+        shutil.rmtree(backup)
+    else:
+        os.replace(src, dst)
 
 
 def list_files(root: str) -> list[str]:
