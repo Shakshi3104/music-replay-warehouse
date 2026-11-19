@@ -1,0 +1,64 @@
+name: OKF catalog
+
+# dbt の yml（manifest.json）と実際の型（catalog.json）から OKF のデータカタログを生成し、
+# Actions の成果物（artifact）として出力する。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "models/**"
+      - "dbt_project.yml"
+      - "data/snapshots/**"
+      - "scripts/**"
+      - ".github/workflows/okf_catalog.yml"
+  pull_request:
+    paths:
+      - "models/**"
+      - "dbt_project.yml"
+      - "data/snapshots/**"
+      - "scripts/**"
+      - ".github/workflows/okf_catalog.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # catalog.json の型は実在するテーブルから取るので、同梱のスナップショットを読み込んで dbt を回す
+      - name: Load snapshots
+        run: |
+          for xml in data/snapshots/*/music-library.xml; do
+            python3 scripts/load_xml_snapshot.py "$xml"
+          done
+
+      - name: Build models
+        run: dbt run --profiles-dir .
+
+      - name: Generate dbt docs
+        run: dbt docs generate --profiles-dir .
+
+      - name: Generate OKF catalog
+        run: |
+          python3 scripts/generate_okf.py \
+            --manifest target/manifest.json \
+            --catalog target/catalog.json \
+            --out target/okf | tee okf_summary.txt
+          { echo '```'; cat okf_summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: okf-catalog
+          path: target/okf
