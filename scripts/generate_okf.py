@@ -220,11 +220,12 @@ def replace_dir(src: str, dst: str) -> None:
 
 
 def list_files(root: str) -> list[str]:
-    return [
-        os.path.relpath(os.path.join(d, f), root).replace(os.sep, "/")
-        for d, _, files in os.walk(root)
-        for f in files
-    ]
+    """root 以下のファイル。ディレクトリへのシンボリックリンクは os.walk では dirs 側に入るので、それも含める。"""
+    found = []
+    for d, dirs, files in os.walk(root):
+        names = files + [n for n in dirs if os.path.islink(os.path.join(d, n))]
+        found += [os.path.relpath(os.path.join(d, n), root).replace(os.sep, "/") for n in names]
+    return found
 
 
 def previous_outputs(root: str) -> set[str]:
