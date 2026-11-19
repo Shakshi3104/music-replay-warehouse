@@ -20,10 +20,13 @@ import argparse
 import json
 import os
 import re
+import shutil
+import tempfile
 from collections import defaultdict
 
 # OKF のアクター規約（`<producer>/<version>`）に合わせる。出力の形式を変えたら上げる。
 GENERATOR = "dbt-manifest-to-okf/1.0"
+OKF_VERSION = "0.2"
 
 # 巨大な STRUCT を持つモデルは、ネストした列の展開だけで千列を超え、1ファイルが数百KBになる。
 # 外れ値だけを抑える上限で、普通のモデルには効かない。
@@ -130,8 +133,9 @@ def build_index(entries: list[dict], title: str) -> str:
     for e in entries:
         by_layer[e["layer"]].append(e)
 
-    out = ["---", "type: index", f"title: {yaml_scalar(title)}", "generated:", f"  by: {yaml_scalar(GENERATOR)}", "---", ""]
-    out += [f"# {title}", "", f"dbt の manifest から自動生成。{len(entries)} テーブル。", ""]
+    # index.md に書けるフロントマターは、ルートの okf_version だけ（OKF v0.2 §8, §12）
+    out = ["---", f"okf_version: {yaml_scalar(OKF_VERSION)}", "---", ""]
+    out += [f"# {title}", "", f"dbt の manifest から {GENERATOR} で自動生成。{len(entries)} テーブル。", ""]
     for layer in sorted(by_layer):
         out += [f"## {layer or '(models 直下)'}", ""]
         for e in sorted(by_layer[layer], key=lambda x: x["name"]):
@@ -175,10 +179,44 @@ def main() -> None:
     }
     targets = {k: v for k, v in materialized.items() if okf_enabled(v)}
 
+    # 毎回まっさらな一時ディレクトリに生成し、成功してから出力先と入れ替える。
+    # 同じ出力先に上書きすると、除外・削除したモデルの .md が残ってしまうため
+    out_dir = os.path.abspath(args.out)
+    os.makedirs(os.path.dirname(out_dir), exist_ok=True)
+    work = tempfile.mkdtemp(prefix=".okf-", dir=os.path.dirname(out_dir))
+    try:
+        entries = write_bundle(targets, catalog_nodes, scheme, title, metadata.get("dbt_version"), work)
+        replace_dir(work, out_dir)
+    except BaseException:
+        shutil.rmtree(work, ignore_errors=True)
+        raise
+
+    with_desc = sum(1 for e in entries if e["summary"])
+    print(f"manifest schema : {schema_version}")
+    print(f"生成            : {len(entries)} テーブル → {args.out}")
+    print(f"除外(ephemeral) : {len(models) - len(materialized)}")
+    # 設定ミスで載っているつもりのモデルが消えても気づけるよう、除外した数を出す
+    print(f"除外(meta.okf)  : {len(materialized) - len(targets)}")
+    if entries:
+        print(f"description 有り: {with_desc}/{len(entries)}")
+
+
+def replace_dir(src: str, dst: str) -> None:
+    """dst を src で置き換える。前回のバンドル以外のディレクトリは、誤って消さないよう拒否する。"""
+    if os.path.exists(dst):
+        is_empty = os.path.isdir(dst) and not os.listdir(dst)
+        is_bundle = os.path.isfile(os.path.join(dst, "catalog-index.json"))
+        if not (is_empty or is_bundle):
+            raise SystemExit(f"出力先 {dst} は空でも前回のカタログでもないため、上書きしません")
+        shutil.rmtree(dst)
+    os.replace(src, dst)
+
+
+def write_bundle(targets: dict, catalog_nodes: dict, scheme: str, title: str, dbt_version: str | None, out: str) -> list[dict]:
     entries = []
     for key, node in sorted(targets.items()):
         rel_path = "/".join(node["fqn"][1:]) + ".md"
-        abs_path = os.path.join(args.out, rel_path)
+        abs_path = os.path.join(out, rel_path)
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
         with open(abs_path, "w") as f:
             f.write(build_concept(node, catalog_nodes.get(key), scheme))
@@ -191,28 +229,20 @@ def main() -> None:
             "tags": sorted(set(node.get("tags") or [])),
         })
 
-    with open(os.path.join(args.out, "index.md"), "w") as f:
+    with open(os.path.join(out, "index.md"), "w") as f:
         f.write(build_index(entries, title))
 
     # 読む側はこれだけを読んで検索し、必要なコンセプトだけを取りに行く。
     # OKF の予約ファイル名は index.md / log.md だけなので、.json は仕様とぶつからない
     index_json = {
         "generated_by": GENERATOR,
-        "dbt_version": metadata.get("dbt_version"),
+        "dbt_version": dbt_version,
         "count": len(entries),
         "tables": sorted(entries, key=lambda x: (x["layer"], x["name"])),
     }
-    with open(os.path.join(args.out, "catalog-index.json"), "w") as f:
+    with open(os.path.join(out, "catalog-index.json"), "w") as f:
         json.dump(index_json, f, ensure_ascii=False, indent=1, sort_keys=True)
-
-    with_desc = sum(1 for e in entries if e["summary"])
-    print(f"manifest schema : {schema_version}")
-    print(f"生成            : {len(entries)} テーブル → {args.out}")
-    print(f"除外(ephemeral) : {len(models) - len(materialized)}")
-    # 設定ミスで載っているつもりのモデルが消えても気づけるよう、除外した数を出す
-    print(f"除外(meta.okf)  : {len(materialized) - len(targets)}")
-    if entries:
-        print(f"description 有り: {with_desc}/{len(entries)}")
+    return entries
 
 
 if __name__ == "__main__":

@@ -52,6 +52,8 @@ jobs:
 
       - name: Generate OKF catalog
         run: |
+          # tee に繋ぐと Python の失敗がパイプで隠れるので、pipefail で拾う
+          set -o pipefail
           python3 scripts/generate_okf.py \
             --manifest target/manifest.json \
             --catalog target/catalog.json \
